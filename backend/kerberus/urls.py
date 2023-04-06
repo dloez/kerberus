@@ -16,6 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
-from core.limbo.routers import router as limbo_router
-
-urlpatterns = [path("admin/", admin.site.urls), path("limbo/", include((limbo_router.urls, "limbo")))]
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("api/limbo/", include("core.limbo.urls")),
+]
