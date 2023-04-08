@@ -7,7 +7,7 @@ class Project(models.Model):
 
     NAME_LENGTH: int = 100
 
-    name = models.CharField(max_length=NAME_LENGTH, primary_key=True)
+    name = models.CharField(max_length=NAME_LENGTH)
     dependencies = models.ManyToManyField("Dependency", related_name="projects")
 
 
@@ -16,25 +16,32 @@ class Ingest(models.Model):
 
     HASH_ID_LENGTH: int = 64
 
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    MAVEN = "maven"
+    NPM = "npm"
+    ECOSYSTEM_CHOICES = ((MAVEN, "maven"), (NPM, "npm"))
+
     hash_id = models.CharField(max_length=HASH_ID_LENGTH, primary_key=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    ecosystem = models.CharField(max_length=10, choices=ECOSYSTEM_CHOICES)
+    project = models.ForeignKey("Project", on_delete=models.CASCADE)
     dependencies = models.ManyToManyField("Dependency", related_name="ingests")
 
 
 class Dependency(models.Model):
     """Define Dependency model to represent project dependencies."""
 
-    PACKAGE_NAME_LENGTH: int = 100
+    NAME_LENGTH: int = 100
     VERSION_LENGTH: int = 20
 
-    package_name = models.CharField(max_length=PACKAGE_NAME_LENGTH, primary_key=True)
+    name = models.CharField(max_length=NAME_LENGTH)
     version = models.CharField(max_length=VERSION_LENGTH)
-    ingest = models.ForeignKey(Ingest, on_delete=models.SET_NULL, null=True)
+    ingest = models.ForeignKey("Ingest", on_delete=models.SET_NULL, null=True)
+    ecosystem = models.CharField(max_length=10, choices=Ingest.ECOSYSTEM_CHOICES)
 
     def assign_ingest(self, ingest: Ingest):
         if self.ingest:
+            self.ingests.add(ingest)
             return
 
+        self.ingests.add(ingest)
         self.ingest = ingest
         self.save()
