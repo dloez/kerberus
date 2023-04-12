@@ -6,7 +6,7 @@ from rest_framework import serializers
 from core.models import Dependency, Ingest, Project
 
 
-class ProjectSerializer(serializers.Serializer):
+class IngestProjectSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=Project.NAME_LENGTH)
 
     def create(self, validated_data) -> Project:
@@ -69,11 +69,11 @@ class NewIngestSerializer(serializers.Serializer):
 
 
 class RequestIngestSerializer(serializers.Serializer):
-    project = ProjectSerializer()
+    project = IngestProjectSerializer()
     ingests = serializers.ListSerializer(child=NewIngestSerializer())
 
     def create(self, validated_data) -> List[Ingest]:
-        project_serializer = ProjectSerializer(data=self.validated_data["project"])
+        project_serializer = IngestProjectSerializer(data=self.validated_data["project"])
         project_serializer.is_valid(raise_exception=True)
         project = project_serializer.save()
 
