@@ -19,7 +19,7 @@ def ingest_dependencies(request):
 
 
 @api_view(["GET"])
-def get_projects_names(request):
+def get_projects_summaries(request):
     class ProjectSerializer(serializers.Serializer):
         name = serializers.CharField(max_length=Project.NAME_LENGTH)
 
