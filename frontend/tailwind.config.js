@@ -9,7 +9,7 @@ module.exports = {
     extend: {
       colors: {
         'dark-navy-blue': '#101727',
-        'steel-blue': '#333b46'
+        'steel-blue': '#333b46',
       },
       fontFamily: {
         'varela-round': ['Varela Round', 'sans-serif']
