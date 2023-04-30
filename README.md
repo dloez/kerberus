@@ -16,7 +16,7 @@ The file `/.vscode/settings.json` is the combination of all `settings.json` defi
 - Any editor with support for devcontainers. VSCode is highly recommended.
 
 ### Additional requirements if you are on Windows:
-- WSL (under windows). This requirement is to store the code directly in WSL to avoid performance issues.
+- WSL. This requirement is to store the code directly in WSL to avoid performance issues.
 - Docker Desktop with WSL backend configured.
 - VSCode with WSL extension installed.
 
