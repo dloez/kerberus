@@ -1,0 +1,41 @@
+{
+  "name": "kerberus",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": false
+    },
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.68.2"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18.14.0"
+    },
+    "ghcr.io/balazs23/devcontainers-features/bazel:1": {},
+    "ghcr.io/devcontainers-contrib/features/poetry:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "rust-lang.rust-analyzer",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "DJANGO_SECRET_KEY": "${env:DJANGO_SECRET_KEY}"
+  },
+  "mounts": [
+    "source=kerberus-shellhistory,target=/commandhistory,type=volume",
+    "source=kerberus-bazel,target=/home/vscode/.cache/bazel,type=volume",
+    "source=kerberus-bazelisk,target=/home/vscode/.cache/bazelisk,type=volume"
+  ],
+  "postStartCommand": "sudo chown -R vscode:vscode /home/vscode/.cache",
+  "appPort": [3000, 8000]
+}
