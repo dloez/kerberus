@@ -2,7 +2,7 @@ from itertools import zip_longest
 
 import requests
 from django.conf import settings
-from django.core.paginator import Paginator
+from django.core.paginator import Page, Paginator
 from huey.contrib.djhuey import task
 
 from core.models import Dependency, Project, Vulnerability, VulnerabilityDependency
@@ -29,18 +29,21 @@ def collect_vulnerabilities(project_id=None):
         page = paginator.page(page_num)
         vulnerabilities = osv_get_vulnerabilities_batch(page)
         for dependency, dependency_vulnerabilities in zip(page, vulnerabilities):
-            for vulnerability in vulnerabilities:
+            if "vulns" not in dependency_vulnerabilities:
+                continue
+            dependency_vulnerabilities = dependency_vulnerabilities["vulns"]
+            for vulnerability in dependency_vulnerabilities:
                 try:
-                    dependency.vulnerabilities.get(vulnerability["id"])
+                    dependency.vulnerabilities.get(osv_id=vulnerability["id"])
                 except Vulnerability.DoesNotExist:
                     try:
                         Vulnerability.objects.get(osv_id=vulnerability["id"])
-                    except vulnerability.DoesNotExist:
+                    except Vulnerability.DoesNotExist:
                         osv_depencency_vulnerability = osv_get_vulnerability(vulnerability["id"])
                         create_vulnerability(osv_depencency_vulnerability, dependency)
 
 
-def osv_get_vulnerabilities_batch(dependencies: Paginator.Page) -> dict:
+def osv_get_vulnerabilities_batch(dependencies: Page) -> dict:
     osv_batch = {"queries": []}
     for dependency in dependencies:
         dep_request = {
