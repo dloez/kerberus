@@ -37,11 +37,11 @@ def get_project_dependencies(request, id):
         name = serializers.CharField(max_length=Dependency.NAME_LENGTH)
         version = serializers.CharField(max_length=Dependency.VERSION_LENGTH)
         ecosystem = serializers.ChoiceField(choices=Ingest.ECOSYSTEM_CHOICES)
-    
+
     try:
         project = Project.objects.get(id=id)
     except Project.DoesNotExist:
-        raise Http404(f"Project with id '{id}' does not exists")
+        raise Http404(f"Project with id '{id}' does not exist")
 
     from_element = int(request.query_params.get("from", 0))
     to_element = int(request.query_params.get("to", 10))
