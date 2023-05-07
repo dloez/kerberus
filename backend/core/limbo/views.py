@@ -1,9 +1,10 @@
 """Limbo REST-API version views."""
+from django.http import Http404
 from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from core.models import Project
+from core.models import Dependency, Ingest, Project
 from core.serializers import RequestIngestSerializer
 
 
@@ -28,3 +29,22 @@ def get_projects_summaries(request):
     projects = Project.objects.all()[from_element:to_element].only("name")
     project_serializer = ProjectSerializer(projects, many=True)
     return Response(project_serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def get_project_dependencies(request, id):
+    class DependencySerializer(serializers.Serializer):
+        name = serializers.CharField(max_length=Dependency.NAME_LENGTH)
+        version = serializers.CharField(max_length=Dependency.VERSION_LENGTH)
+        ecosystem = serializers.ChoiceField(choices=Ingest.ECOSYSTEM_CHOICES)
+    
+    try:
+        project = Project.objects.get(id=id)
+    except Project.DoesNotExist:
+        raise Http404(f"Project with id '{id}' does not exists")
+
+    from_element = int(request.query_params.get("from", 0))
+    to_element = int(request.query_params.get("to", 10))
+    dependencies = project.dependencies.all()[from_element:to_element].only("name")
+    dependencies_serializer = DependencySerializer(dependencies, many=True)
+    return Response(dependencies_serializer.data, status=status.HTTP_200_OK)
