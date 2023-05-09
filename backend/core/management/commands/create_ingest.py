@@ -17,12 +17,26 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        dependencies = options["dependencies"]
+        if dependencies < 3:
+            dependencies = 3
+            print("minimum amount of dependencies is 3...")
+
         project = Project.objects.filter(name=options["project_name"]).first()
         ecosystem = random.choice(Ingest.ECOSYSTEM_CHOICES)[0]
         ingest = Ingest(hash_id=get_random_hash_hexstring(), ecosystem=ecosystem, project=project)
         ingest.save()
 
-        for i in range(options["dependencies"]):
+        # hardcoded real dependencies with vulnerabilities
+        if ecosystem in REAL_DEPENDENCIES:
+            vulns = REAL_DEPENDENCIES[ecosystem]
+            for vuln in vulns:
+                name, version = vuln.split("@")
+                dependency = Dependency(name=name, version=version, ecosystem=ecosystem, ingest=ingest)
+                dependency.save()
+                dependencies -= 1
+
+        for i in range(dependencies):
             create_dependency(ingest, ecosystem)
 
 
@@ -94,3 +108,16 @@ WORDS = [
     "carrot",
     "broccoli",
 ]
+
+REAL_DEPENDENCIES = {
+    "maven": [
+        "org.xwiki.commons:xwiki-commons-xml@14.10",
+        "org.testng:testng@6.13",
+        "org.apache.ranger:ranger-hive-plugin@2.0.0",
+    ],
+    "npm": [
+        "uap-core@0.1.0",
+        "http-cache-semantics@3.8.1",
+        "uglify-js@0.1.0"
+    ]
+}
