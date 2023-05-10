@@ -1,4 +1,4 @@
-from itertools import zip_longest
+from collections import Counter
 
 import requests
 from django.conf import settings
@@ -6,11 +6,6 @@ from django.core.paginator import Page, Paginator
 from huey.contrib.djhuey import task
 
 from core.models import Dependency, Project, Vulnerability, VulnerabilityDependency
-
-
-def grouper(iterable, chunk_size, fillvalue=None):
-    args = [iter(iterable)] * chunk_size
-    return zip_longest(*args, fillvalue=fillvalue)
 
 
 @task()
@@ -31,16 +26,30 @@ def collect_vulnerabilities(project_id=None):
         for dependency, dependency_vulnerabilities in zip(page, vulnerabilities):
             if "vulns" not in dependency_vulnerabilities:
                 continue
+
             dependency_vulnerabilities = dependency_vulnerabilities["vulns"]
-            for vulnerability in dependency_vulnerabilities:
+            for osv_vulnerability in dependency_vulnerabilities:
                 try:
-                    dependency.vulnerabilities.get(osv_id=vulnerability["id"])
+                    vulnerability = dependency.vulnerabilities.get(osv_id=osv_vulnerability["id"])
+                    vulnerability_dependency = vulnerability.vulnerabilitydependency_set.first()
+                    osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
+                    fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
+
+                    if Counter(fixed_versions) != Counter(vulnerability_dependency.fixed_versions):
+                        vulnerability_dependency.fixed_versions = fixed_versions
+                        vulnerability_dependency.save()
                 except Vulnerability.DoesNotExist:
                     try:
-                        Vulnerability.objects.get(osv_id=vulnerability["id"])
+                        vulnerability = Vulnerability.objects.get(osv_id=osv_vulnerability["id"])
+                        osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
+                        fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
+                        vulnerability_dependency = VulnerabilityDependency(
+                            dependency=dependency, vulnerability=vulnerability, fixed_versions=fixed_versions
+                        )
+                        vulnerability_dependency.save()
                     except Vulnerability.DoesNotExist:
-                        osv_depencency_vulnerability = osv_get_vulnerability(vulnerability["id"])
-                        create_vulnerability(osv_depencency_vulnerability, dependency)
+                        osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
+                        create_vulnerability(osv_vulnerability, dependency)
 
 
 def osv_get_vulnerabilities_batch(dependencies: Page) -> dict:
@@ -64,6 +73,28 @@ def create_vulnerability(osv_vulnerability: dict, dependency: Dependency) -> Vul
     vulnerability = Vulnerability(osv_id=osv_vulnerability["id"], cve_id=cve_id)
     vulnerability.save()
 
-    relationship = VulnerabilityDependency(vulnerability=vulnerability, dependency=dependency, fixed_versions=[])
+    fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
+
+    relationship = VulnerabilityDependency(
+        vulnerability=vulnerability, dependency=dependency, fixed_versions=fixed_versions
+    )
     relationship.save()
     return vulnerability
+
+
+def get_vulnerability_fixed_versions(osv_vulnerability: dict, dependency: Dependency) -> list[str] | None:
+    for affected_package in osv_vulnerability["affected"]:
+        if affected_package["package"]["name"] != dependency.name:
+            continue
+        if affected_package["package"]["ecosystem"] != dependency.ecosystem.capitalize():
+            continue
+        if dependency.version not in affected_package["versions"]:
+            continue
+
+        fixed_versions = []
+        for affected_range in affected_package["ranges"]:
+            for event in affected_range["events"]:
+                if "fixed" in event:
+                    fixed_versions.append(event["fixed"])
+        return fixed_versions
+    return []
