@@ -22,6 +22,7 @@ def ingest_dependencies(request):
 @api_view(["GET"])
 def get_projects_summaries(request):
     class ProjectSerializer(serializers.Serializer):
+        id = serializers.IntegerField()
         name = serializers.CharField(max_length=Project.NAME_LENGTH)
 
     from_element = int(request.query_params.get("from", 0))
