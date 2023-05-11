@@ -1,5 +1,3 @@
-from collections import Counter
-
 import requests
 from django.conf import settings
 from django.core.paginator import Page, Paginator
@@ -24,32 +22,23 @@ def collect_vulnerabilities(project_id=None):
         page = paginator.page(page_num)
         vulnerabilities = osv_get_vulnerabilities_batch(page)
         for dependency, dependency_vulnerabilities in zip(page, vulnerabilities):
+            dependency.vulnerabilitydependency_set.all().delete()
             if "vulns" not in dependency_vulnerabilities:
                 continue
 
             dependency_vulnerabilities = dependency_vulnerabilities["vulns"]
             for osv_vulnerability in dependency_vulnerabilities:
                 try:
-                    vulnerability = dependency.vulnerabilities.get(osv_id=osv_vulnerability["id"])
-                    vulnerability_dependency = vulnerability.vulnerabilitydependency_set.first()
+                    vulnerability = Vulnerability.objects.get(osv_id=osv_vulnerability["id"])
                     osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
                     fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
-
-                    if Counter(fixed_versions) != Counter(vulnerability_dependency.fixed_versions):
-                        vulnerability_dependency.fixed_versions = fixed_versions
-                        vulnerability_dependency.save()
+                    vulnerability_dependency = VulnerabilityDependency(
+                        dependency=dependency, vulnerability=vulnerability, fixed_versions=fixed_versions
+                    )
+                    vulnerability_dependency.save()
                 except Vulnerability.DoesNotExist:
-                    try:
-                        vulnerability = Vulnerability.objects.get(osv_id=osv_vulnerability["id"])
-                        osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
-                        fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
-                        vulnerability_dependency = VulnerabilityDependency(
-                            dependency=dependency, vulnerability=vulnerability, fixed_versions=fixed_versions
-                        )
-                        vulnerability_dependency.save()
-                    except Vulnerability.DoesNotExist:
-                        osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
-                        create_vulnerability(osv_vulnerability, dependency)
+                    osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
+                    vulnerability = create_vulnerability(osv_vulnerability, dependency)
 
 
 def osv_get_vulnerabilities_batch(dependencies: Page) -> dict:
