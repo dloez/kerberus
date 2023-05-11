@@ -6,6 +6,7 @@ from rest_framework.response import Response
 
 from core.models import Dependency, Ingest, Project
 from core.serializers import RequestIngestSerializer
+from core.tasks import collect_vulnerabilities
 
 
 @api_view(["POST"])
@@ -49,3 +50,9 @@ def get_project_dependencies(request, id):
     dependencies = project.dependencies.all()[from_element:to_element].only("name")
     dependencies_serializer = DependencySerializer(dependencies, many=True)
     return Response(dependencies_serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["PATCH"])
+def update_vulnerabilities(request, pk=None):
+    collect_vulnerabilities()
+    return Response(status=status.HTTP_200_OK)

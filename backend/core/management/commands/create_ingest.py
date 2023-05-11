@@ -115,9 +115,5 @@ REAL_DEPENDENCIES = {
         "org.testng:testng@6.13",
         "org.apache.ranger:ranger-hive-plugin@2.0.0",
     ],
-    "npm": [
-        "uap-core@0.1.0",
-        "http-cache-semantics@3.8.1",
-        "uglify-js@0.1.0"
-    ]
+    "npm": ["uap-core@0.1.0", "http-cache-semantics@3.8.1", "uglify-js@0.1.0"],
 }

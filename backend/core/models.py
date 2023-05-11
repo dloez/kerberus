@@ -36,6 +36,7 @@ class Dependency(models.Model):
     version = models.CharField(max_length=VERSION_LENGTH)
     ingest = models.ForeignKey("Ingest", on_delete=models.SET_NULL, null=True)
     ecosystem = models.CharField(max_length=10, choices=Ingest.ECOSYSTEM_CHOICES)
+    vulnerabilities = models.ManyToManyField("Vulnerability", through="VulnerabilityDependency")
 
     def assign_ingest(self, ingest: Ingest):
         if self.ingest:
@@ -45,3 +46,14 @@ class Dependency(models.Model):
         self.ingests.add(ingest)
         self.ingest = ingest
         self.save()
+
+
+class Vulnerability(models.Model):
+    osv_id = models.CharField(max_length=100, primary_key=True)
+    cve_id = models.CharField(max_length=100, null=True)
+
+
+class VulnerabilityDependency(models.Model):
+    dependency = models.ForeignKey("Dependency", on_delete=models.CASCADE)
+    vulnerability = models.ForeignKey("Vulnerability", on_delete=models.CASCADE)
+    fixed_versions = models.CharField(max_length=255)
