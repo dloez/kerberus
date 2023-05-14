@@ -10,6 +10,7 @@ py_binary(
         requirement("djangorestframework"),
         requirement("huey"),
         requirement("redis"),
-        requirement("requests")
+        requirement("requests"),
+        requirement("cvss"),
     ],
 )

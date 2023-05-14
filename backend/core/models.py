@@ -49,8 +49,27 @@ class Dependency(models.Model):
 
 
 class Vulnerability(models.Model):
+    NONE = "NONE"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+    SEVERITY_SCORE_STRING_CHOICES = ((NONE, NONE), (LOW, LOW), (MEDIUM, MEDIUM), (HIGH, HIGH), (CRITICAL, CRITICAL))
+
     osv_id = models.CharField(max_length=100, primary_key=True)
     cve_id = models.CharField(max_length=100, null=True)
+    severity = models.CharField(max_length=100, null=True)
+    severity_base_score = models.FloatField(null=True)
+    severity_base_score_string = models.CharField(max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True)
+    severity_temporal_score = models.FloatField(null=True)
+    severity_temporal_score_string = models.CharField(max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True)
+    severity_environmental_score = models.FloatField(null=True)
+    severity_environmental_score_string = models.CharField(
+        max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True
+    )
+    severity_overall_score = models.FloatField(null=True)
+    severity_overall_score_string = models.CharField(max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True)
+    last_updated = models.DateTimeField(auto_now=True)
 
 
 class VulnerabilityDependency(models.Model):

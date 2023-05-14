@@ -200,6 +200,18 @@ files = [
 ]
 
 [[package]]
+name = "cvss"
+version = "2.6"
+description = "CVSS2/3 library with interactive calculator for Python 2 and Python 3"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "cvss-2.6-py2.py3-none-any.whl", hash = "sha256:7006a025e1587f94fc7ce6bd2f3fa10b27a85d2f843d72d4346122779919c63b"},
+    {file = "cvss-2.6.tar.gz", hash = "sha256:1e8f0c7ac1c1d7f4fb6d901950aa216358809de25ee7c41bc138615a23936c80"},
+]
+
+[[package]]
 name = "django"
 version = "4.1.7"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
@@ -439,4 +451,4 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "7d37b6ec070af6b28962fe6a5d836e1dbe7eb0a84bf75d6c7dcb23e5cef56d7e"
+content-hash = "1da4133e2285a302d306b4998e69fadded9695a2b4bb8886638b7f851ce9c5ee"

@@ -1,4 +1,7 @@
+from statistics import mean
+
 import requests
+from cvss import CVSS2, CVSS3
 from django.conf import settings
 from django.core.paginator import Page, Paginator
 from huey.contrib.djhuey import task
@@ -31,6 +34,7 @@ def collect_vulnerabilities(project_id=None):
                 try:
                     vulnerability = Vulnerability.objects.get(osv_id=osv_vulnerability["id"])
                     osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
+                    update_vulnerability_fields(vulnerability, osv_vulnerability, auto_save=True)
                     fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
                     vulnerability_dependency = VulnerabilityDependency(
                         dependency=dependency, vulnerability=vulnerability, fixed_versions=fixed_versions
@@ -59,11 +63,13 @@ def osv_get_vulnerability(id: str) -> dict:
 
 def create_vulnerability(osv_vulnerability: dict, dependency: Dependency) -> Vulnerability:
     cve_id = osv_vulnerability["aliases"][0]
-    vulnerability = Vulnerability(osv_id=osv_vulnerability["id"], cve_id=cve_id)
-    vulnerability.save()
+    vulnerability = Vulnerability(
+        osv_id=osv_vulnerability["id"],
+        cve_id=cve_id,
+    )
+    update_vulnerability_fields(vulnerability, osv_vulnerability, auto_save=True)
 
     fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
-
     relationship = VulnerabilityDependency(
         vulnerability=vulnerability, dependency=dependency, fixed_versions=fixed_versions
     )
@@ -87,3 +93,73 @@ def get_vulnerability_fixed_versions(osv_vulnerability: dict, dependency: Depend
                     fixed_versions.append(event["fixed"])
         return fixed_versions
     return []
+
+
+def get_vulnerability_severity_fields(osv_vulnerability) -> ():
+    severities = osv_vulnerability["severity"]
+
+    cvss = [severity for severity in severities if severity["type"] == "CVSS_V3"]
+    if not cvss:
+        cvss = [severity for severity in severities if severity["type"] == "CVSS_V2"]
+    if not cvss:
+        return "", 0.0, "", 0.0, "", 0.0, "", 0.0, ""
+
+    cvss_objs = {"CVSS_V3": CVSS3, "CVSS_V2": CVSS2}
+
+    cvss = cvss[0]
+    severity = cvss["score"]
+    cvss = cvss_objs[cvss["type"]](cvss["score"])
+
+    base_score, temporal_score, environmental_score = cvss.scores()
+    base_score_string, temporal_score_string, environmental_score_string = cvss.severities()
+
+    overall_score = mean((base_score, temporal_score, environmental_score))
+    if overall_score == 0.0:
+        overall_score_string = Vulnerability.NONE
+    elif 0.1 <= overall_score <= 3.9:
+        overall_score = Vulnerability.LOW
+    elif 4.0 <= overall_score <= 6.9:
+        overall_score_string = Vulnerability.MEDIUM
+    elif 7.0 <= overall_score <= 8.9:
+        overall_score_string = Vulnerability.HIGH
+    else:
+        overall_score_string = Vulnerability.CRITICAL
+    return (
+        severity,
+        base_score,
+        base_score_string.upper(),
+        temporal_score,
+        temporal_score_string.upper(),
+        environmental_score,
+        environmental_score_string.upper(),
+        overall_score,
+        overall_score_string,
+    )
+
+
+def update_vulnerability_fields(vulnerability: Vulnerability, osv_vulnerability: dict, auto_save: bool = False):
+    (
+        severity,
+        base_score,
+        base_score_string,
+        temporal_score,
+        temporal_score_string,
+        environmental_score,
+        environmental_score_string,
+        overall_score,
+        overall_score_string,
+    ) = get_vulnerability_severity_fields(osv_vulnerability)
+    if severity == vulnerability.severity:
+        return
+
+    vulnerability.severity = severity
+    vulnerability.severity_base_score = base_score
+    vulnerability.severity_base_score_string = base_score_string
+    vulnerability.severity_temporal_score = temporal_score
+    vulnerability.severity_temporal_score_string = temporal_score_string
+    vulnerability.severity_environmental_score = environmental_score
+    vulnerability.severity_environmental_score_string = environmental_score_string
+    vulnerability.severity_overall_score = overall_score
+    vulnerability.severity_overall_score_string = overall_score_string
+    if auto_save:
+        vulnerability.save()
