@@ -34,15 +34,13 @@ def collect_vulnerabilities(project_id=None):
                 try:
                     vulnerability = Vulnerability.objects.get(osv_id=osv_vulnerability["id"])
                     osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
-                    update_vulnerability_fields(vulnerability, osv_vulnerability, auto_save=True)
-                    fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
-                    vulnerability_dependency = VulnerabilityDependency(
-                        dependency=dependency, vulnerability=vulnerability, fixed_versions=fixed_versions
+                    create_update_vulnerability_and_dependency(
+                        osv_vulnerability, dependency, vulnerability=vulnerability
                     )
-                    vulnerability_dependency.save()
                 except Vulnerability.DoesNotExist:
                     osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
-                    vulnerability = create_vulnerability(osv_vulnerability, dependency)
+                    create_update_vulnerability_and_dependency(osv_vulnerability, dependency)
+            populate_vulnerabilities_in_dependency(dependency)
 
 
 def osv_get_vulnerabilities_batch(dependencies: Page) -> dict:
@@ -61,13 +59,24 @@ def osv_get_vulnerability(id: str) -> dict:
     return requests.get(settings.OSV_GET_VULN_URL.format(id)).json()
 
 
-def create_vulnerability(osv_vulnerability: dict, dependency: Dependency) -> Vulnerability:
-    cve_id = osv_vulnerability["aliases"][0]
-    vulnerability = Vulnerability(
-        osv_id=osv_vulnerability["id"],
-        cve_id=cve_id,
-    )
-    update_vulnerability_fields(vulnerability, osv_vulnerability, auto_save=True)
+def create_update_vulnerability_and_dependency(
+    osv_vulnerability: dict, dependency: Dependency, vulnerability: Vulnerability = None
+) -> Vulnerability:
+    if not vulnerability:
+        vulnerability = Vulnerability(osv_id=osv_vulnerability["id"])
+
+    changed = False
+    cve_id = osv_vulnerability["aliases"][0]  # TODO: check scheme and add validations
+    if cve_id != vulnerability.cve_id:
+        vulnerability.cve_id = cve_id
+        changed = True
+
+    severities_changed = update_vulnerability_severity_fields(vulnerability, osv_vulnerability)
+    if severities_changed and not changed:
+        changed = True
+
+    if changed:
+        vulnerability.save()
 
     fixed_versions = get_vulnerability_fixed_versions(osv_vulnerability, dependency)
     relationship = VulnerabilityDependency(
@@ -95,7 +104,7 @@ def get_vulnerability_fixed_versions(osv_vulnerability: dict, dependency: Depend
     return []
 
 
-def get_vulnerability_severity_fields(osv_vulnerability) -> ():
+def get_osv_vulnerability_severity_fields(osv_vulnerability) -> ():
     severities = osv_vulnerability["severity"]
 
     cvss = [severity for severity in severities if severity["type"] == "CVSS_V3"]
@@ -137,7 +146,7 @@ def get_vulnerability_severity_fields(osv_vulnerability) -> ():
     )
 
 
-def update_vulnerability_fields(vulnerability: Vulnerability, osv_vulnerability: dict, auto_save: bool = False):
+def update_vulnerability_severity_fields(vulnerability: Vulnerability, osv_vulnerability: dict) -> bool:
     (
         severity,
         base_score,
@@ -148,9 +157,9 @@ def update_vulnerability_fields(vulnerability: Vulnerability, osv_vulnerability:
         environmental_score_string,
         overall_score,
         overall_score_string,
-    ) = get_vulnerability_severity_fields(osv_vulnerability)
+    ) = get_osv_vulnerability_severity_fields(osv_vulnerability)
     if severity == vulnerability.severity:
-        return
+        return False
 
     vulnerability.severity = severity
     vulnerability.severity_base_score = base_score
@@ -161,5 +170,43 @@ def update_vulnerability_fields(vulnerability: Vulnerability, osv_vulnerability:
     vulnerability.severity_environmental_score_string = environmental_score_string
     vulnerability.severity_overall_score = overall_score
     vulnerability.severity_overall_score_string = overall_score_string
-    if auto_save:
-        vulnerability.save()
+    return True
+
+
+def populate_vulnerabilities_in_dependency(dependency: Dependency):
+    total_vulnerabilities = {
+        Vulnerability.NONE: 0,
+        Vulnerability.LOW: 0,
+        Vulnerability.MEDIUM: 0,
+        Vulnerability.HIGH: 0,
+        Vulnerability.CRITICAL: 0,
+    }
+    for vulnerability in dependency.vulnerabilities.all():
+        total_vulnerabilities[vulnerability.severity_overall_score_string] += 1
+    total_vulnerabilities[Vulnerability.LOW] = sum(
+        (total_vulnerabilities[Vulnerability.LOW], total_vulnerabilities[Vulnerability.NONE])
+    )
+    all_vulnerabilities = sum(total_vulnerabilities.values())
+
+    dirty_fields = set()
+    dirty_fields.add(change_attr(total_vulnerabilities[Vulnerability.LOW], "total_vulnerabilities_low", dependency))
+    dirty_fields.add(
+        change_attr(total_vulnerabilities[Vulnerability.MEDIUM], "total_vulnerabilities_medium", dependency)
+    )
+    dirty_fields.add(change_attr(total_vulnerabilities[Vulnerability.HIGH], "total_vulnerabilities_high", dependency))
+    dirty_fields.add(
+        change_attr(total_vulnerabilities[Vulnerability.CRITICAL], "total_vulnerabilities_critical", dependency)
+    )
+    dirty_fields.add(
+        change_attr(all_vulnerabilities, 'total_vulnerabilities', dependency)
+    )
+    dirty_fields.remove("")
+    if dirty_fields:
+        dependency.save(update_fields=dirty_fields)
+
+
+def change_attr(attr_value, attr_name: str, obj) -> str:
+    if attr_value != getattr(obj, attr_name):
+        setattr(obj, attr_name, attr_value)
+        return attr_name
+    return ""
