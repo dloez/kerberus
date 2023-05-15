@@ -35,12 +35,14 @@ class Command(BaseCommand):
                 dependency = Dependency(name=name, version=version, ecosystem=ecosystem, ingest=ingest)
                 dependency.save()
                 dependencies -= 1
+                project.dependencies.add(dependency)
 
         for i in range(dependencies):
-            create_dependency(ingest, ecosystem)
+            dependency = create_dependency(ingest, ecosystem)
+            project.dependencies.add(dependency)
 
 
-def create_dependency(ingest: Ingest, ecosystem: str):
+def create_dependency(ingest: Ingest, ecosystem: str) -> Dependency():
     name = ""
     version = ""
     for i in range(3):
@@ -50,6 +52,7 @@ def create_dependency(ingest: Ingest, ecosystem: str):
 
     dependency = Dependency(name=name, version=version, ecosystem=ecosystem, ingest=ingest)
     dependency.save()
+    return dependency
 
 
 def get_random_hash_hexstring() -> str:

@@ -38,6 +38,12 @@ class Dependency(models.Model):
     ecosystem = models.CharField(max_length=10, choices=Ingest.ECOSYSTEM_CHOICES)
     vulnerabilities = models.ManyToManyField("Vulnerability", through="VulnerabilityDependency")
 
+    total_vulnerabilities = models.IntegerField(default=0)
+    total_vulnerabilities_low = models.IntegerField(default=0)
+    total_vulnerabilities_medium = models.IntegerField(default=0)
+    total_vulnerabilities_high = models.IntegerField(default=0)
+    total_vulnerabilities_critical = models.IntegerField(default=0)
+
     def assign_ingest(self, ingest: Ingest):
         if self.ingest:
             self.ingests.add(ingest)
