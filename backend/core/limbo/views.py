@@ -39,6 +39,11 @@ def get_project_dependencies(request, id):
         name = serializers.CharField(max_length=Dependency.NAME_LENGTH)
         version = serializers.CharField(max_length=Dependency.VERSION_LENGTH)
         ecosystem = serializers.ChoiceField(choices=Ingest.ECOSYSTEM_CHOICES)
+        total_vulnerabilities = serializers.IntegerField()
+        total_vulnerabilities_low = serializers.IntegerField()
+        total_vulnerabilities_medium = serializers.IntegerField()
+        total_vulnerabilities_high = serializers.IntegerField()
+        total_vulnerabilities_critical = serializers.IntegerField()
 
     try:
         project = Project.objects.get(id=id)
