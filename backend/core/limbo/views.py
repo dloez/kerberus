@@ -4,7 +4,7 @@ from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from core.models import Dependency, Ingest, Project
+from core.models import Dependency, Ingest, Project, Vulnerability, VulnerabilityDependency
 from core.serializers import RequestIngestSerializer
 from core.tasks import collect_vulnerabilities
 
@@ -61,3 +61,40 @@ def get_project_dependencies(request, id):
 def update_vulnerabilities(request, pk=None):
     collect_vulnerabilities()
     return Response(status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def get_project_vulnerabilities(request, id):
+    class VulnerabilitySerializer(serializers.Serializer):
+        osv_id = serializers.CharField(max_length=Vulnerability.OSV_ID_LENGTH)
+        cve_id = serializers.CharField(max_length=Vulnerability.CVE_ID_LENGTH)
+        severity_overall_score = serializers.FloatField()
+        severity_overall_score_string = serializers.ChoiceField(choices=Vulnerability.SEVERITY_SCORE_STRING_CHOICES)
+        fix_available = serializers.BooleanField()
+
+    int(request.query_params.get("from", 0))
+    int(request.query_params.get("to", 10))
+
+    try:
+        project = Project.objects.get(id=id)
+    except Project.DoesNotExist:
+        raise Http404(f"Project with id '{id}' does not exist")
+
+    from_element = int(request.query_params.get("from", 0))
+    to_element = int(request.query_params.get("to", 10))
+    vulnerabilities = Vulnerability.objects.filter(dependencies__projects=project)[from_element:to_element]
+    res_vulnerabilities = []
+    for vulnerability in vulnerabilities:
+        fix_available = bool(
+            VulnerabilityDependency.objects.filter(vulnerability=vulnerability).exclude(fixed_versions__exact="[]")
+        )
+        vulnerability = {
+            "osv_id": vulnerability.osv_id,
+            "cve_id": vulnerability.cve_id,
+            "severity_overall_score": vulnerability.severity_overall_score,
+            "severity_overall_score_string": vulnerability.severity_overall_score_string,
+            "fix_available": fix_available,
+        }
+        res_vulnerabilities.append(vulnerability)
+    serializer = VulnerabilitySerializer(res_vulnerabilities, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

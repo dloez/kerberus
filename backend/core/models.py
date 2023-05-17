@@ -1,4 +1,6 @@
 """Define core functionalities models."""
+import json
+
 from django.db import models
 
 
@@ -36,7 +38,9 @@ class Dependency(models.Model):
     version = models.CharField(max_length=VERSION_LENGTH)
     ingest = models.ForeignKey("Ingest", on_delete=models.SET_NULL, null=True)
     ecosystem = models.CharField(max_length=10, choices=Ingest.ECOSYSTEM_CHOICES)
-    vulnerabilities = models.ManyToManyField("Vulnerability", through="VulnerabilityDependency")
+    vulnerabilities = models.ManyToManyField(
+        "Vulnerability", through="VulnerabilityDependency", related_name="dependencies"
+    )
 
     total_vulnerabilities = models.IntegerField(default=0)
     total_vulnerabilities_low = models.IntegerField(default=0)
@@ -62,9 +66,13 @@ class Vulnerability(models.Model):
     CRITICAL = "CRITICAL"
     SEVERITY_SCORE_STRING_CHOICES = ((NONE, NONE), (LOW, LOW), (MEDIUM, MEDIUM), (HIGH, HIGH), (CRITICAL, CRITICAL))
 
-    osv_id = models.CharField(max_length=100, primary_key=True)
-    cve_id = models.CharField(max_length=100, null=True)
-    severity = models.CharField(max_length=100, null=True)
+    OSV_ID_LENGTH = 100
+    CVE_ID_LENGTH = 100
+    SEVERITY_LENGTH = 100
+
+    osv_id = models.CharField(max_length=OSV_ID_LENGTH, primary_key=True)
+    cve_id = models.CharField(max_length=CVE_ID_LENGTH, null=True)
+    severity = models.CharField(max_length=SEVERITY_LENGTH, null=True)
     severity_base_score = models.FloatField(null=True)
     severity_base_score_string = models.CharField(max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True)
     severity_temporal_score = models.FloatField(null=True)
@@ -82,3 +90,8 @@ class VulnerabilityDependency(models.Model):
     dependency = models.ForeignKey("Dependency", on_delete=models.CASCADE)
     vulnerability = models.ForeignKey("Vulnerability", on_delete=models.CASCADE)
     fixed_versions = models.CharField(max_length=255)
+
+    def save(self, *args, **kwargs):
+        if isinstance(self.fixed_versions, list):
+            self.fixed_versions = json.dumps(self.fixed_versions)
+        super().save(*args, **kwargs)
