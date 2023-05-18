@@ -17,16 +17,32 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        dependencies = options["dependencies"]
+        if dependencies < 3:
+            dependencies = 3
+            print("minimum amount of dependencies is 3...")
+
         project = Project.objects.filter(name=options["project_name"]).first()
         ecosystem = random.choice(Ingest.ECOSYSTEM_CHOICES)[0]
         ingest = Ingest(hash_id=get_random_hash_hexstring(), ecosystem=ecosystem, project=project)
         ingest.save()
 
-        for i in range(options["dependencies"]):
-            create_dependency(ingest, ecosystem)
+        # hardcoded real dependencies with vulnerabilities
+        if ecosystem in REAL_DEPENDENCIES:
+            vulns = REAL_DEPENDENCIES[ecosystem]
+            for vuln in vulns:
+                name, version = vuln.split("@")
+                dependency = Dependency(name=name, version=version, ecosystem=ecosystem, ingest=ingest)
+                dependency.save()
+                dependencies -= 1
+                project.dependencies.add(dependency)
+
+        for i in range(dependencies):
+            dependency = create_dependency(ingest, ecosystem)
+            project.dependencies.add(dependency)
 
 
-def create_dependency(ingest: Ingest, ecosystem: str):
+def create_dependency(ingest: Ingest, ecosystem: str) -> Dependency():
     name = ""
     version = ""
     for i in range(3):
@@ -36,6 +52,7 @@ def create_dependency(ingest: Ingest, ecosystem: str):
 
     dependency = Dependency(name=name, version=version, ecosystem=ecosystem, ingest=ingest)
     dependency.save()
+    return dependency
 
 
 def get_random_hash_hexstring() -> str:
@@ -94,3 +111,12 @@ WORDS = [
     "carrot",
     "broccoli",
 ]
+
+REAL_DEPENDENCIES = {
+    "maven": [
+        "org.xwiki.commons:xwiki-commons-xml@14.10",
+        "org.testng:testng@6.13",
+        "org.apache.ranger:ranger-hive-plugin@2.0.0",
+    ],
+    "npm": ["uap-core@0.1.0", "http-cache-semantics@3.8.1", "uglify-js@0.1.0"],
+}

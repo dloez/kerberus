@@ -7,6 +7,10 @@ py_binary(
     imports = ["."],
     deps = [
         requirement("django"),
-        requirement("djangorestframework")
+        requirement("djangorestframework"),
+        requirement("huey"),
+        requirement("redis"),
+        requirement("requests"),
+        requirement("cvss"),
     ],
 )

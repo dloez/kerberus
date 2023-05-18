@@ -36,6 +36,13 @@ class Dependency(models.Model):
     version = models.CharField(max_length=VERSION_LENGTH)
     ingest = models.ForeignKey("Ingest", on_delete=models.SET_NULL, null=True)
     ecosystem = models.CharField(max_length=10, choices=Ingest.ECOSYSTEM_CHOICES)
+    vulnerabilities = models.ManyToManyField("Vulnerability", through="VulnerabilityDependency")
+
+    total_vulnerabilities = models.IntegerField(default=0)
+    total_vulnerabilities_low = models.IntegerField(default=0)
+    total_vulnerabilities_medium = models.IntegerField(default=0)
+    total_vulnerabilities_high = models.IntegerField(default=0)
+    total_vulnerabilities_critical = models.IntegerField(default=0)
 
     def assign_ingest(self, ingest: Ingest):
         if self.ingest:
@@ -45,3 +52,33 @@ class Dependency(models.Model):
         self.ingests.add(ingest)
         self.ingest = ingest
         self.save()
+
+
+class Vulnerability(models.Model):
+    NONE = "NONE"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+    SEVERITY_SCORE_STRING_CHOICES = ((NONE, NONE), (LOW, LOW), (MEDIUM, MEDIUM), (HIGH, HIGH), (CRITICAL, CRITICAL))
+
+    osv_id = models.CharField(max_length=100, primary_key=True)
+    cve_id = models.CharField(max_length=100, null=True)
+    severity = models.CharField(max_length=100, null=True)
+    severity_base_score = models.FloatField(null=True)
+    severity_base_score_string = models.CharField(max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True)
+    severity_temporal_score = models.FloatField(null=True)
+    severity_temporal_score_string = models.CharField(max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True)
+    severity_environmental_score = models.FloatField(null=True)
+    severity_environmental_score_string = models.CharField(
+        max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True
+    )
+    severity_overall_score = models.FloatField(null=True)
+    severity_overall_score_string = models.CharField(max_length=8, choices=SEVERITY_SCORE_STRING_CHOICES, null=True)
+    last_updated = models.DateTimeField(auto_now=True)
+
+
+class VulnerabilityDependency(models.Model):
+    dependency = models.ForeignKey("Dependency", on_delete=models.CASCADE)
+    vulnerability = models.ForeignKey("Vulnerability", on_delete=models.CASCADE)
+    fixed_versions = models.CharField(max_length=255)
