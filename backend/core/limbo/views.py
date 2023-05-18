@@ -34,7 +34,7 @@ def get_projects_summaries(request):
 
 
 @api_view(["GET"])
-def get_project_dependencies(request, id):
+def get_project_dependencies(request, id: int):
     class DependencySerializer(serializers.Serializer):
         name = serializers.CharField(max_length=Dependency.NAME_LENGTH)
         version = serializers.CharField(max_length=Dependency.VERSION_LENGTH)
@@ -64,7 +64,7 @@ def update_vulnerabilities(request, pk=None):
 
 
 @api_view(["GET"])
-def get_project_vulnerabilities(request, id):
+def get_project_vulnerabilities(request, id: int):
     class VulnerabilitySerializer(serializers.Serializer):
         osv_id = serializers.CharField(max_length=Vulnerability.OSV_ID_LENGTH)
         cve_id = serializers.CharField(max_length=Vulnerability.CVE_ID_LENGTH)
@@ -94,6 +94,46 @@ def get_project_vulnerabilities(request, id):
             "severity_overall_score": vulnerability.severity_overall_score,
             "severity_overall_score_string": vulnerability.severity_overall_score_string,
             "fix_available": fix_available,
+        }
+        res_vulnerabilities.append(vulnerability)
+    serializer = VulnerabilitySerializer(res_vulnerabilities, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def get_project_dependency_vulnerabilities(request, project_id: int, dependency_id: int):
+    class VulnerabilitySerializer(serializers.Serializer):
+        osv_id = serializers.CharField(max_length=Vulnerability.OSV_ID_LENGTH)
+        cve_id = serializers.CharField(max_length=Vulnerability.CVE_ID_LENGTH)
+        severity_overall_score = serializers.FloatField()
+        severity_overall_score_string = serializers.ChoiceField(choices=Vulnerability.SEVERITY_SCORE_STRING_CHOICES)
+        fixed_versions = serializers.ListField()
+
+    try:
+        project = Project.objects.get(id=project_id)
+    except Project.DoesNotExist:
+        raise Http404(f"Project with id '{project_id}' does not exist")
+
+    try:
+        dependency = project.dependencies.get(id=dependency_id)
+    except Project.DoesNotExist:
+        raise Http404(f"Dependency with id '{dependency_id}' does not exist")
+
+    from_element = int(request.query_params.get("from", 0))
+    to_element = int(request.query_params.get("to", 10))
+    vulnerabilities = dependency.vulnerabilities.all()[from_element:to_element]
+    res_vulnerabilities = []
+    for vulnerability in vulnerabilities:
+        vulnerability = {
+            "osv_id": vulnerability.osv_id,
+            "cve_id": vulnerability.cve_id,
+            "severity_overall_score": vulnerability.severity_overall_score,
+            "severity_overall_score_string": vulnerability.severity_overall_score_string,
+            "fixed_versions": VulnerabilityDependency.objects.filter(
+                vulnerability=vulnerability, dependency=dependency
+            )
+            .first()
+            .get_fixed_versions(),
         }
         res_vulnerabilities.append(vulnerability)
     serializer = VulnerabilitySerializer(res_vulnerabilities, many=True)

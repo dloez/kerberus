@@ -95,3 +95,9 @@ class VulnerabilityDependency(models.Model):
         if isinstance(self.fixed_versions, list):
             self.fixed_versions = json.dumps(self.fixed_versions)
         super().save(*args, **kwargs)
+
+    def get_fixed_versions(self):
+        try:
+            return json.loads(self.fixed_versions)
+        except json.JSONDecodeError:
+            return []
