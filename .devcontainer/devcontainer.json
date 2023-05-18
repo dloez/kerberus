@@ -15,7 +15,10 @@
       "version": "18.14.0"
     },
     "ghcr.io/balazs23/devcontainers-features/bazel:1": {},
-    "ghcr.io/devcontainers-contrib/features/poetry:2": {}
+    "ghcr.io/devcontainers-contrib/features/poetry:2": {},
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": false
+    }
   },
   "customizations": {
     "vscode": {
@@ -37,5 +40,6 @@
     "source=kerberus-bazelisk,target=/home/vscode/.cache/bazelisk,type=volume"
   ],
   "postStartCommand": "sudo chown -R vscode:vscode /home/vscode/.cache",
-  "appPort": [3000, 8000]
+  "appPort": [3000, 8000],
+  "runArgs": ["--network=kerberus", "--name=kerberus-vscode"]
 }

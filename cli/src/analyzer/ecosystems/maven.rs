@@ -25,7 +25,7 @@ impl Ecosystem for MavenEcosystem {
         remove_dir_all(&cache_dir).expect("Could not delete cache directory");
 
         Ingest {
-            hash_id: "50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c".to_string(),
+            hash_id: "50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c".to_string(), // TODO: generate hashfile
             ecosystem: "maven".to_string(),
             dependencies: dependencies
         }
