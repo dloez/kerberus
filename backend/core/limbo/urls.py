@@ -13,4 +13,9 @@ urlpatterns = [
         views.get_project_dependency_vulnerabilities,
         name="project_dependency_vulnerabilities",
     ),
+    path(
+        "projects/<int:project_id>/vulnerabilities/<str:vulnerability_id>",
+        views.get_project_vulnerability,
+        name="project_vulnerability",
+    ),
 ]
