@@ -122,7 +122,7 @@ def get_osv_vulnerability_severity_fields(osv_vulnerability) -> ():
     base_score, temporal_score, environmental_score = cvss.scores()
     base_score_string, temporal_score_string, environmental_score_string = cvss.severities()
 
-    overall_score = mean((base_score, temporal_score, environmental_score))
+    overall_score = round(mean((base_score, temporal_score, environmental_score)), 1)
     if overall_score == 0.0:
         overall_score_string = Vulnerability.NONE
     elif 0.1 <= overall_score <= 3.9:
@@ -197,9 +197,7 @@ def populate_vulnerabilities_in_dependency(dependency: Dependency):
     dirty_fields.add(
         change_attr(total_vulnerabilities[Vulnerability.CRITICAL], "total_vulnerabilities_critical", dependency)
     )
-    dirty_fields.add(
-        change_attr(all_vulnerabilities, 'total_vulnerabilities', dependency)
-    )
+    dirty_fields.add(change_attr(all_vulnerabilities, "total_vulnerabilities", dependency))
     dirty_fields.remove("")
     if dirty_fields:
         dependency.save(update_fields=dirty_fields)
