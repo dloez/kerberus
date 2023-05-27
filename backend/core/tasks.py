@@ -1,4 +1,3 @@
-import re
 from statistics import mean
 
 import requests
@@ -116,7 +115,7 @@ def get_vulnerability_fixed_versions(osv_vulnerability: dict, dependency: Depend
             if affected_range["type"] == RANGE_SEMVER:
                 parsed_introduced = parse_version(introduced)
                 parsed_fixed = parse_version(fixed)
-                parsed_dependency_version = parse_version(re.sub("[^0-9.]", "", dependency.version))
+                parsed_dependency_version = parse_version(dependency.version)
                 if parsed_introduced <= parsed_dependency_version <= parsed_fixed:
                     fixed_versions.append(fixed)
         return fixed_versions
