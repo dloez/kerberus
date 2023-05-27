@@ -12,5 +12,6 @@ py_binary(
         requirement("redis"),
         requirement("requests"),
         requirement("cvss"),
+        requirement("packaging"),
     ],
 )

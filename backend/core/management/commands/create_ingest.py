@@ -23,7 +23,7 @@ class Command(BaseCommand):
             print("minimum amount of dependencies is 3...")
 
         project = Project.objects.filter(name=options["project_name"]).first()
-        ecosystem = random.choice(Ingest.ECOSYSTEM_CHOICES)[0]
+        ecosystem = "maven"
         ingest = Ingest(hash_id=get_random_hash_hexstring(), ecosystem=ecosystem, project=project)
         ingest.save()
 

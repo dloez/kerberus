@@ -1,3 +1,4 @@
+import re
 from statistics import mean
 
 import requests
@@ -5,8 +6,9 @@ from cvss import CVSS2, CVSS3
 from django.conf import settings
 from django.core.paginator import Page, Paginator
 from huey.contrib.djhuey import task
+from packaging.version import parse as parse_version
 
-from core.models import Dependency, Project, Vulnerability, VulnerabilityDependency
+from core.models import Dependency, Ingest, Project, Vulnerability, VulnerabilityDependency
 
 
 @task()
@@ -47,7 +49,7 @@ def osv_get_vulnerabilities_batch(dependencies: Page) -> dict:
     osv_batch = {"queries": []}
     for dependency in dependencies:
         dep_request = {
-            "package": {"ecosystem": dependency.ecosystem.capitalize(), "name": dependency.name},
+            "package": {"ecosystem": OSV_ECOSYSTEM_NAMES[dependency.ecosystem], "name": dependency.name},
             "version": dependency.version,
         }
         osv_batch["queries"].append(dep_request)
@@ -90,16 +92,33 @@ def get_vulnerability_fixed_versions(osv_vulnerability: dict, dependency: Depend
     for affected_package in osv_vulnerability["affected"]:
         if affected_package["package"]["name"] != dependency.name:
             continue
-        if affected_package["package"]["ecosystem"] != dependency.ecosystem.capitalize():
-            continue
-        if dependency.version not in affected_package["versions"]:
+        if affected_package["package"]["ecosystem"] != OSV_ECOSYSTEM_NAMES[dependency.ecosystem]:
             continue
 
         fixed_versions = []
         for affected_range in affected_package["ranges"]:
+            introduced = ""
+            fixed = ""
             for event in affected_range["events"]:
+                if "introduced" in event:
+                    introduced = event["introduced"]
                 if "fixed" in event:
-                    fixed_versions.append(event["fixed"])
+                    fixed = event["fixed"]
+
+            if not fixed:
+                continue
+
+            if affected_range["type"] == RANGE_ECOSYSTEM:
+                if dependency.version in affected_package["versions"]:
+                    fixed_versions.append(fixed)
+                continue
+
+            if affected_range["type"] == RANGE_SEMVER:
+                parsed_introduced = parse_version(introduced)
+                parsed_fixed = parse_version(fixed)
+                parsed_dependency_version = parse_version(re.sub("[^0-9.]", "", dependency.version))
+                if parsed_introduced <= parsed_dependency_version <= parsed_fixed:
+                    fixed_versions.append(fixed)
         return fixed_versions
     return []
 
@@ -208,3 +227,8 @@ def change_attr(attr_value, attr_name: str, obj) -> str:
         setattr(obj, attr_name, attr_value)
         return attr_name
     return ""
+
+
+OSV_ECOSYSTEM_NAMES = {Ingest.MAVEN: "Maven", Ingest.NPM: "npm"}
+RANGE_ECOSYSTEM = "ECOSYSTEM"
+RANGE_SEMVER = "SEMVER"
