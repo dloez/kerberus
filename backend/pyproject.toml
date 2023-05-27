@@ -13,6 +13,7 @@ huey = "^2.4.5"
 redis = "^4.5.4"
 requests = "^2.29.0"
 cvss = "^2.6"
+packaging = "^23.1"
 
 
 [tool.poetry.group.dev.dependencies]
