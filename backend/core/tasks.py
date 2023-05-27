@@ -144,7 +144,7 @@ def get_osv_vulnerability_severity_fields(osv_vulnerability) -> ():
     if overall_score == 0.0:
         overall_score_string = Vulnerability.NONE
     elif 0.1 <= overall_score <= 3.9:
-        overall_score = Vulnerability.LOW
+        overall_score_string = Vulnerability.LOW
     elif 4.0 <= overall_score <= 6.9:
         overall_score_string = Vulnerability.MEDIUM
     elif 7.0 <= overall_score <= 8.9:
