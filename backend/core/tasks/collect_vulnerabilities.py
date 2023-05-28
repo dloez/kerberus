@@ -9,6 +9,7 @@ from huey.contrib.djhuey import db_periodic_task, lock_task
 from packaging.version import parse as parse_version
 
 from core.models import Dependency, Ingest, Project, Vulnerability, VulnerabilityDependency
+from core.tasks.clean_vulnerabilities import clean_vulnerabilities
 
 
 @db_periodic_task(settings.CRON_HUEY_COLLECT_VULNERABILITIES)
@@ -45,6 +46,7 @@ def collect_vulnerabilities(project_id=None):
                     osv_vulnerability = osv_get_vulnerability(osv_vulnerability["id"])
                     create_update_vulnerability_and_dependency(osv_vulnerability, dependency)
             populate_vulnerabilities_in_dependency(dependency)
+    clean_vulnerabilities()()
 
 
 def osv_get_vulnerabilities_batch(dependencies: Page) -> dict:

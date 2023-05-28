@@ -4,9 +4,9 @@ from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from core.collect_vulnerabilities import collect_vulnerabilities
 from core.models import Dependency, Ingest, Project, Vulnerability, VulnerabilityDependency
 from core.serializers import RequestIngestSerializer
+from core.tasks.collect_vulnerabilities import collect_vulnerabilities
 
 
 @api_view(["POST"])
