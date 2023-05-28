@@ -4,9 +4,9 @@ from rest_framework import serializers, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from core.collect_vulnerabilities import collect_vulnerabilities
 from core.models import Dependency, Ingest, Project, Vulnerability, VulnerabilityDependency
 from core.serializers import RequestIngestSerializer
-from core.tasks import collect_vulnerabilities
 
 
 @api_view(["POST"])
@@ -17,6 +17,7 @@ def ingest_dependencies(request):
     if not request_ingests.is_valid():
         return Response({"status": "failed to digest ingest", "errors": request_ingests.error_messages})
     request_ingests.save()
+    collect_vulnerabilities()()
     return Response(status=status.HTTP_201_CREATED)
 
 
@@ -59,7 +60,7 @@ def get_project_dependencies(request, id: int):
 
 @api_view(["PATCH"])
 def update_vulnerabilities(request, pk=None):
-    collect_vulnerabilities()
+    collect_vulnerabilities()()
     return Response(status=status.HTTP_200_OK)
 
 
@@ -71,9 +72,6 @@ def get_project_vulnerabilities(request, id: int):
         severity_overall_score = serializers.FloatField()
         severity_overall_score_string = serializers.ChoiceField(choices=Vulnerability.SEVERITY_SCORE_STRING_CHOICES)
         fix_available = serializers.BooleanField()
-
-    int(request.query_params.get("from", 0))
-    int(request.query_params.get("to", 10))
 
     try:
         project = Project.objects.get(id=id)

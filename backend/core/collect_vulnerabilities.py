@@ -1,17 +1,20 @@
+import time
 from statistics import mean
 
 import requests
 from cvss import CVSS2, CVSS3
 from django.conf import settings
 from django.core.paginator import Page, Paginator
-from huey.contrib.djhuey import task
+from huey.contrib.djhuey import db_periodic_task, lock_task
 from packaging.version import parse as parse_version
 
 from core.models import Dependency, Ingest, Project, Vulnerability, VulnerabilityDependency
 
 
-@task()
+@db_periodic_task(settings.CRON_HUEY_COLLECT_VULNERABILITIES)
+@lock_task("collect_vulns")
 def collect_vulnerabilities(project_id=None):
+    time.sleep(5)
     if not project_id:
         dependencies = Dependency.objects.all().order_by("id")
     else:

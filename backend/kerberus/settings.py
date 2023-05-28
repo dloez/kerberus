@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 import os
 from pathlib import Path
 
+from huey import crontab
 from redis import ConnectionPool
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -152,3 +153,5 @@ HUEY = {
 
 OSV_QUERY_BATCH_URL = "https://api.osv.dev/v1/querybatch"
 OSV_GET_VULN_URL = "https://api.osv.dev/v1/vulns/{}"
+
+CRON_HUEY_COLLECT_VULNERABILITIES = crontab(minute="0", hour="0")
